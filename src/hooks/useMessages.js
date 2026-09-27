@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { supabase } from '../supabaseClient'
+import { api } from '../firebase'
 import { useAuth } from '../context/AuthContext'
 
 export function useMessages() {
@@ -12,13 +12,7 @@ export function useMessages() {
     if (!user) return
     setLoading(true)
     try {
-      const { data, error: err } = await supabase
-        .from('messages')
-        .select('*')
-        .eq('client_id', user.id)
-        .order('sent_at', { ascending: false })
-
-      if (err) throw err
+      const data = await api.getMessages(user.uid || user.id)
       setMessages(data || [])
     } catch (err) {
       setError(err.message)
@@ -32,22 +26,18 @@ export function useMessages() {
   }, [fetchMessages])
 
   async function saveMessage({ subject, body, direction = 'outbound' }) {
-    const { data, error: err } = await supabase
-      .from('messages')
-      .insert({
-        client_id: user.id,
+    try {
+      const saved = await api.saveMessage({
+        clientId: user.uid || user.id,
         subject,
         body,
         direction,
-        sent_at: new Date().toISOString(),
       })
-      .select()
-      .single()
-
-    if (!err) {
-      setMessages(prev => [data, ...prev])
+      setMessages(prev => [saved, ...prev])
+      return { data: saved, error: null }
+    } catch (err) {
+      return { data: null, error: err }
     }
-    return { data, error: err }
   }
 
   return {

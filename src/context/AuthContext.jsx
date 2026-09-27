@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react'
-import { supabase } from '../supabaseClient'
+import { api, isFirebaseConfigured } from '../firebase'
 
 const AuthContext = createContext(null)
 
@@ -9,86 +9,106 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null)
-      if (session?.user) fetchProfile(session.user.id)
-      else setLoading(false)
+    const unsubscribe = api.onAuthChange(({ user: u, profile: p }) => {
+      setUser(u)
+      setProfile(p)
+      setLoading(false)
     })
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null)
-      if (session?.user) fetchProfile(session.user.id)
-      else {
-        setProfile(null)
-        setLoading(false)
-      }
-    })
-
-    return () => subscription.unsubscribe()
+    return () => unsubscribe && unsubscribe()
   }, [])
 
-  async function fetchProfile(userId) {
+  async function signUp({ email, password, fullName, company, phone }) {
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single()
-
-      if (error && error.code !== 'PGRST116') throw error
-      setProfile(data)
-    } catch (err) {
-      console.error('Profile fetch error:', err)
-    } finally {
-      setLoading(false)
+      const res = await api.signUp({ email, password, fullName, company, phone })
+      setUser(res.user)
+      setProfile(res.profile)
+      return { data: res, error: null }
+    } catch (error) {
+      return { data: null, error }
     }
   }
 
-  async function signUp({ email, password, fullName, company, phone }) {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { full_name: fullName, company, phone },
-        emailRedirectTo: 'https://crm.freshleads.llc',
-      },
-    })
-    return { data, error }
-  }
-
   async function signIn({ email, password }) {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-    return { data, error }
+    try {
+      const res = await api.signIn({ email, password })
+      setUser(res.user)
+      setProfile(res.profile)
+      return { data: res, error: null }
+    } catch (error) {
+      return { data: null, error }
+    }
   }
 
   async function signOut() {
-    await supabase.auth.signOut()
+    await api.signOut()
     setUser(null)
     setProfile(null)
   }
 
   async function resetPassword(email) {
-    return supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: 'https://crm.freshleads.llc/reset-password',
-    })
+    try {
+      await api.resetPassword(email)
+      return { error: null }
+    } catch (error) {
+      return { error }
+    }
   }
 
   async function updatePassword(newPassword) {
-    return supabase.auth.updateUser({ password: newPassword })
+    try {
+      await api.updatePassword(newPassword)
+      return { error: null }
+    } catch (error) {
+      return { error }
+    }
   }
 
   async function updateProfile(updates) {
     if (!user) return { error: new Error('Not authenticated') }
-    const { data, error } = await supabase
-      .from('profiles')
-      .update(updates)
-      .eq('id', user.id)
-      .select()
-      .single()
-    if (!error) setProfile(data)
-    return { data, error }
+    try {
+      const updated = await api.updateProfile(user.uid || user.id, updates)
+      setProfile(prev => ({ ...prev, ...updated }))
+      return { data: updated, error: null }
+    } catch (error) {
+      return { data: null, error }
+    }
+  }
+
+  // Switch demo account helper
+  function switchAccount(role = 'client') {
+    if (role === 'admin') {
+      const adminProfile = {
+        id: 'admin-user-1',
+        email: 'admin@freshleads.llc',
+        full_name: 'FreshLeads Admin',
+        company: 'FreshLeads HQ',
+        phone: '(800) 555-0100',
+        role: 'admin',
+        created_at: new Date().toISOString(),
+      }
+      setUser({ uid: adminProfile.id, email: adminProfile.email, displayName: adminProfile.full_name })
+      setProfile(adminProfile)
+      localStorage.setItem('freshleads_current_user', JSON.stringify({
+        user: { uid: adminProfile.id, email: adminProfile.email, displayName: adminProfile.full_name },
+        profile: adminProfile,
+      }))
+    } else {
+      const clientProfile = {
+        id: 'client-user-1',
+        email: 'client@freshleads.llc',
+        full_name: 'John Miller',
+        company: 'Miller Roofing Solutions',
+        phone: '(214) 555-0192',
+        role: 'client',
+        created_at: new Date().toISOString(),
+      }
+      setUser({ uid: clientProfile.id, email: clientProfile.email, displayName: clientProfile.full_name })
+      setProfile(clientProfile)
+      localStorage.setItem('freshleads_current_user', JSON.stringify({
+        user: { uid: clientProfile.id, email: clientProfile.email, displayName: clientProfile.full_name },
+        profile: clientProfile,
+      }))
+    }
   }
 
   const isAdmin = profile?.role === 'admin'
@@ -99,13 +119,14 @@ export function AuthProvider({ children }) {
       profile,
       loading,
       isAdmin,
+      isFirebaseLive: isFirebaseConfigured,
       signUp,
       signIn,
       signOut,
       resetPassword,
       updatePassword,
       updateProfile,
-      fetchProfile,
+      switchAccount,
     }}>
       {children}
     </AuthContext.Provider>

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import emailjs from '@emailjs/browser'
-import { supabase } from '../../supabaseClient'
+import { api } from '../../firebase'
 import { ToastContainer, useToast } from '../../components/Toast'
 import { Megaphone, Send, CheckCircle } from 'lucide-react'
 
@@ -21,34 +21,35 @@ export default function AdminAnnouncement() {
     setSent(false)
 
     try {
-      // Fetch all client emails from profiles
-      const { data: profiles, error } = await supabase
-        .from('profiles')
-        .select('full_name')
-        .eq('role', 'client')
+      // Fetch all client profiles
+      const profiles = await api.getClients()
 
-      if (error) throw error
+      // Send bulk email via EmailJS (if configured)
+      const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID
+      const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY
+      const template = import.meta.env.VITE_EMAILJS_TEMPLATE_CONTACT
 
-      // Send bulk email via EmailJS
-      await emailjs.send(
-        import.meta.env.VITE_EMAILJS_SERVICE_ID,
-        import.meta.env.VITE_EMAILJS_TEMPLATE_CONTACT,
-        {
-          from_name: 'FreshLeads Team',
-          from_email: 'info@freshleads.llc',
-          reply_to: 'info@freshleads.llc',
-          to_email: 'info@freshleads.llc',
-          subject: `[Announcement] ${form.subject}`,
-          message: `BULK ANNOUNCEMENT TO ALL CLIENTS:\n\n${form.body}`,
-        },
-        import.meta.env.VITE_EMAILJS_PUBLIC_KEY
-      )
+      if (serviceId && publicKey && !publicKey.includes('placeholder')) {
+        await emailjs.send(
+          serviceId,
+          template,
+          {
+            from_name: 'FreshLeads Team',
+            from_email: 'info@freshleads.llc',
+            reply_to: 'info@freshleads.llc',
+            to_email: 'info@freshleads.llc',
+            subject: `[Announcement] ${form.subject}`,
+            message: `BULK ANNOUNCEMENT TO ALL CLIENTS:\n\n${form.body}`,
+          },
+          publicKey
+        )
+      }
 
       setSent(true)
-      addToast(`Announcement sent to ${profiles.length} clients!`, 'success')
+      addToast(`Announcement broadcast recorded for ${profiles.length} clients!`, 'success')
       setForm({ subject: '', body: '' })
     } catch (err) {
-      addToast('Failed to send: ' + err.message, 'error')
+      addToast('Broadcast error: ' + err.message, 'error')
     } finally {
       setSending(false)
     }
@@ -62,7 +63,7 @@ export default function AdminAnnouncement() {
           <span className="text-fresh-orange text-sm font-semibold">Admin</span>
         </div>
         <h1 className="text-3xl font-display font-bold text-white">Send Announcement</h1>
-        <p className="text-fresh-muted mt-1">Broadcast a message to all active clients</p>
+        <p className="text-fresh-muted mt-1">Broadcast a message or alert to all active clients</p>
       </div>
 
       {sent && (
@@ -82,7 +83,7 @@ export default function AdminAnnouncement() {
               value={form.subject}
               onChange={e => setForm({ ...form, subject: e.target.value })}
               className="input-field"
-              placeholder="New leads available for your area!"
+              placeholder="Fresh batch of storm damage leads uploaded!"
             />
           </div>
           <div>
@@ -98,11 +99,11 @@ export default function AdminAnnouncement() {
           </div>
           <div className="flex items-center justify-between pt-2">
             <p className="text-fresh-muted text-sm">
-              This will be sent to all registered clients.
+              Sent from info@freshleads.llc
             </p>
             <button type="submit" disabled={sending} className="btn-primary">
               <Send className="w-4 h-4" />
-              {sending ? 'Sending…' : 'Send to All Clients'}
+              {sending ? 'Sending…' : 'Broadcast to Clients'}
             </button>
           </div>
         </form>

@@ -9,12 +9,12 @@ export default defineConfig({
       output: {
         manualChunks: {
           'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-          'supabase': ['@supabase/supabase-js'],
+          'firebase': ['firebase/app', 'firebase/auth', 'firebase/firestore'],
           'emailjs': ['@emailjs/browser'],
           'utils': ['papaparse', 'date-fns', 'lucide-react'],
         },
       },
     },
-    chunkSizeWarningLimit: 600,
+    chunkSizeWarningLimit: 800,
   },
 })

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { supabase } from '../supabaseClient'
+import { api } from '../firebase'
 import { useAuth } from '../context/AuthContext'
 
 export function useLeads() {
@@ -13,20 +13,7 @@ export function useLeads() {
     setLoading(true)
     setError(null)
     try {
-      let query = supabase
-        .from('leads')
-        .select('*')
-        .order('created_at', { ascending: false })
-
-      // Admins can fetch leads for a specific client
-      if (isAdmin && clientId) {
-        query = query.eq('client_id', clientId)
-      } else if (!isAdmin) {
-        query = query.eq('client_id', user.id)
-      }
-
-      const { data, error: err } = await query
-      if (err) throw err
+      const data = await api.getLeads(user.uid || user.id, isAdmin, clientId)
       setLeads(data || [])
     } catch (err) {
       setError(err.message)
@@ -40,39 +27,33 @@ export function useLeads() {
   }, [fetchLeads])
 
   async function updateLeadStatus(leadId, status) {
-    const { error: err } = await supabase
-      .from('leads')
-      .update({ status, updated_at: new Date().toISOString() })
-      .eq('id', leadId)
-
-    if (!err) {
-      setLeads(prev => prev.map(l => l.id === leadId ? { ...l, status } : l))
+    try {
+      await api.updateLeadStatus(leadId, status)
+      setLeads(prev => prev.map(l => l.id === leadId ? { ...l, status, updated_at: new Date().toISOString() } : l))
+      return { error: null }
+    } catch (err) {
+      return { error: err }
     }
-    return { error: err }
   }
 
   async function updateLeadNotes(leadId, notes) {
-    const { error: err } = await supabase
-      .from('leads')
-      .update({ notes, updated_at: new Date().toISOString() })
-      .eq('id', leadId)
-
-    if (!err) {
-      setLeads(prev => prev.map(l => l.id === leadId ? { ...l, notes } : l))
+    try {
+      await api.updateLeadNotes(leadId, notes)
+      setLeads(prev => prev.map(l => l.id === leadId ? { ...l, notes, updated_at: new Date().toISOString() } : l))
+      return { error: null }
+    } catch (err) {
+      return { error: err }
     }
-    return { error: err }
   }
 
   async function bulkInsertLeads(leadsArray) {
-    const { data, error: err } = await supabase
-      .from('leads')
-      .insert(leadsArray)
-      .select()
-
-    if (!err) {
+    try {
+      const res = await api.bulkInsertLeads(leadsArray)
       await fetchLeads()
+      return { data: res, error: null }
+    } catch (err) {
+      return { data: null, error: err }
     }
-    return { data, error: err }
   }
 
   // Stats computed from leads

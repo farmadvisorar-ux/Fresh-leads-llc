@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { supabase } from '../../supabaseClient'
+import { api } from '../../firebase'
 import { format } from 'date-fns'
 import { Users, Search, Mail, Calendar, TrendingUp } from 'lucide-react'
 
@@ -16,23 +16,14 @@ export default function AdminUsers() {
   async function fetchClients() {
     setLoading(true)
     try {
-      const { data: profiles, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('role', 'client')
-        .order('created_at', { ascending: false })
+      const clientProfiles = await api.getClients()
+      setClients(clientProfiles || [])
 
-      if (error) throw error
-      setClients(profiles || [])
-
-      // Fetch lead counts per client
-      const { data: leadData } = await supabase
-        .from('leads')
-        .select('client_id')
-
-      if (leadData) {
+      // Fetch all leads to compute counts
+      const allLeads = await api.getLeads(null, true)
+      if (allLeads) {
         const counts = {}
-        leadData.forEach(({ client_id }) => {
+        allLeads.forEach(({ client_id }) => {
           counts[client_id] = (counts[client_id] || 0) + 1
         })
         setLeadCounts(counts)
@@ -49,7 +40,8 @@ export default function AdminUsers() {
     const s = search.toLowerCase()
     return (
       c.full_name?.toLowerCase().includes(s) ||
-      c.company?.toLowerCase().includes(s)
+      c.company?.toLowerCase().includes(s) ||
+      c.email?.toLowerCase().includes(s)
     )
   })
 
@@ -91,10 +83,10 @@ export default function AdminUsers() {
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-fresh-muted" />
         <input
           type="text"
-          placeholder="Search by name or company…"
+          placeholder="Search by name, email, or company…"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="input-field pl-10 w-64"
+          className="input-field pl-10 w-80"
         />
       </div>
 
@@ -133,12 +125,11 @@ export default function AdminUsers() {
                   </td>
                   <td className="px-5 py-3">
                     <a
-                      href={`mailto:${client.id}@crm`}
+                      href={`mailto:${client.email}`}
                       className="text-fresh-muted hover:text-fresh-orange transition-colors flex items-center gap-1.5"
                     >
                       <Mail className="w-3.5 h-3.5" />
-                      {/* Email isn't in profiles — show from auth is read-only */}
-                      <span>View in Supabase</span>
+                      <span>{client.email || 'No email'}</span>
                     </a>
                   </td>
                   <td className="px-5 py-3 text-fresh-muted">{client.phone || '—'}</td>

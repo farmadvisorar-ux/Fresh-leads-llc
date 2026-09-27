@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { supabase } from '../../supabaseClient'
+import { api } from '../../firebase'
 import { sendNewLeadsNotification } from '../../emailService'
 import CsvUploader from '../../components/CsvUploader'
 import { ToastContainer, useToast } from '../../components/Toast'
@@ -28,18 +28,11 @@ export default function AdminLeadUpload() {
       const notifiedClients = []
 
       for (const [email, clientRows] of Object.entries(byClient)) {
-        // Look up client profile by email via auth
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('id, full_name')
-          .eq('id',
-            // Get profile via auth user lookup
-            (await supabase.rpc('get_user_id_by_email', { user_email: email })).data
-          )
-          .single()
+        // Look up client profile by email
+        const profile = await api.findProfileByEmail(email)
 
         if (!profile) {
-          addToast(`Client not found: ${email}`, 'warning')
+          addToast(`Client not found: ${email}. Please ensure client has an account.`, 'warning')
           continue
         }
 
@@ -53,7 +46,7 @@ export default function AdminLeadUpload() {
           status: 'new',
         }))
 
-        const { error } = await supabase.from('leads').insert(leadsToInsert)
+        const { error } = await api.bulkInsertLeads(leadsToInsert)
 
         if (error) {
           addToast(`Failed to insert for ${email}: ${error.message}`, 'error')
@@ -73,7 +66,7 @@ export default function AdminLeadUpload() {
       }
 
       setLastResult({ inserted: totalInserted, clients: notifiedClients.length })
-      addToast(`✅ ${totalInserted} leads uploaded across ${notifiedClients.length} clients. Notification emails sent.`, 'success')
+      addToast(`✅ ${totalInserted} leads uploaded across ${notifiedClients.length} clients. Notification emails triggered.`, 'success')
     } catch (err) {
       addToast('Upload failed: ' + err.message, 'error')
     } finally {
@@ -119,10 +112,10 @@ export default function AdminLeadUpload() {
         <h3 className="font-display font-bold text-white mb-3">How it works</h3>
         <ol className="space-y-2 text-fresh-muted text-sm list-decimal list-inside">
           <li>Prepare your CSV with the required columns listed above</li>
-          <li>Each <code className="text-slate-300 bg-fresh-border px-1 rounded">client_email</code> must match a registered CRM account</li>
-          <li>Upload the file and preview the data</li>
-          <li>Click "Upload Leads" to insert and notify clients</li>
-          <li>Clients receive an email: "You have X new leads in your dashboard!"</li>
+          <li>Each <code className="text-slate-300 bg-fresh-border px-1 rounded">client_email</code> must match a registered CRM account (e.g. <code className="text-slate-300 bg-fresh-border px-1 rounded">client@freshleads.llc</code>)</li>
+          <li>Upload the file and preview the parsed rows</li>
+          <li>Click "Upload Leads" to insert into their pipeline</li>
+          <li>Clients receive an automatic notification email: "You have X new leads in your dashboard!"</li>
         </ol>
       </div>
 

@@ -1,7 +1,7 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
-  LayoutDashboard, MessageSquare, User, Settings,
-  Users, Upload, Megaphone, LogOut, Zap, ChevronRight
+  LayoutDashboard, MessageSquare, User,
+  Users, Upload, Megaphone, LogOut, Zap, ChevronRight, Shield, RefreshCw
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
@@ -18,7 +18,7 @@ const adminLinks = [
 ]
 
 export default function Sidebar() {
-  const { profile, isAdmin, signOut } = useAuth()
+  const { profile, isAdmin, signOut, switchAccount, isFirebaseLive } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
 
@@ -67,7 +67,7 @@ export default function Sidebar() {
           <>
             <div className="pt-4 pb-1">
               <p className="text-fresh-muted text-xs font-semibold uppercase tracking-wider px-4 py-2">
-                Admin
+                Admin Panel
               </p>
             </div>
             {adminLinks.map(({ to, icon: Icon, label }) => (
@@ -85,6 +85,28 @@ export default function Sidebar() {
             ))}
           </>
         )}
+
+        {/* Quick Demo Switcher (when in preview mode) */}
+        {!isFirebaseLive && (
+          <div className="pt-6">
+            <div className="bg-fresh-border/30 rounded-lg p-3 border border-fresh-border">
+              <p className="text-xs font-medium text-slate-300 mb-2 flex items-center gap-1.5">
+                <Shield className="w-3.5 h-3.5 text-fresh-orange" />
+                Preview Mode
+              </p>
+              <button
+                onClick={() => {
+                  switchAccount(isAdmin ? 'client' : 'admin')
+                  navigate(isAdmin ? '/dashboard' : '/admin/users')
+                }}
+                className="w-full text-xs font-medium bg-fresh-card hover:bg-fresh-border text-fresh-orange border border-fresh-orange/30 rounded-md py-1.5 px-2 flex items-center justify-center gap-1.5 transition-colors"
+              >
+                <RefreshCw className="w-3 h-3" />
+                Switch to {isAdmin ? 'Client View' : 'Admin View'}
+              </button>
+            </div>
+          </div>
+        )}
       </nav>
 
       {/* User Footer */}
@@ -96,9 +118,16 @@ export default function Sidebar() {
             </span>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-slate-100 truncate">
-              {profile?.full_name || 'Client'}
-            </p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-sm font-semibold text-slate-100 truncate">
+                {profile?.full_name || 'Client'}
+              </p>
+              {isAdmin && (
+                <span className="text-[10px] bg-fresh-orange/20 text-fresh-orange px-1.5 py-0.5 rounded font-bold">
+                  ADMIN
+                </span>
+              )}
+            </div>
             <p className="text-xs text-fresh-muted truncate">{profile?.company || ''}</p>
           </div>
         </div>
