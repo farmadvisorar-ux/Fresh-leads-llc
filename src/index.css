@@ -1,0 +1,94 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: #07080B;
+    color: #F1F5F9;
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #0F1116;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #1E2028;
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #FF5C00;
+  }
+
+  ::selection {
+    background-color: #FF5C00;
+    color: white;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-fresh-orange hover:bg-fresh-orange-light text-white font-semibold px-5 py-2.5 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2;
+  }
+
+  .btn-secondary {
+    @apply bg-fresh-card hover:bg-fresh-border text-slate-100 font-semibold px-5 py-2.5 rounded-lg border border-fresh-border transition-all duration-200 inline-flex items-center gap-2;
+  }
+
+  .btn-ghost {
+    @apply text-fresh-muted hover:text-slate-100 font-medium px-3 py-2 rounded-lg transition-all duration-200 inline-flex items-center gap-2;
+  }
+
+  .input-field {
+    @apply w-full bg-fresh-card border border-fresh-border rounded-lg px-4 py-3 text-slate-100 placeholder-fresh-muted focus:outline-none focus:border-fresh-orange focus:ring-1 focus:ring-fresh-orange transition-colors duration-200;
+  }
+
+  .card {
+    @apply bg-fresh-card border border-fresh-border rounded-xl p-6;
+  }
+
+  .badge-new {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-900/40 text-blue-300 border border-blue-800/50;
+  }
+
+  .badge-called {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-900/40 text-yellow-300 border border-yellow-800/50;
+  }
+
+  .badge-appointment {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-900/40 text-purple-300 border border-purple-800/50;
+  }
+
+  .badge-closed {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-900/40 text-green-300 border border-green-800/50;
+  }
+
+  .badge-dead {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-800/60 text-slate-400 border border-slate-700/50;
+  }
+
+  .sidebar-link {
+    @apply flex items-center gap-3 px-4 py-3 rounded-lg text-fresh-muted hover:text-slate-100 hover:bg-fresh-border transition-all duration-200 font-medium;
+  }
+
+  .sidebar-link-active {
+    @apply flex items-center gap-3 px-4 py-3 rounded-lg text-white bg-fresh-orange/10 border border-fresh-orange/20 font-medium;
+  }
+}
