@@ -1,103 +1,106 @@
-# FreshLeads CRM
+# FreshLeads CRM — Client & Dedicated Admin Operations Portal
 
-> Exclusive Client & Admin CRM Portal for **[FreshLeads.llc](https://freshleads.llc)** — hosted at **crm.freshleads.llc**
-
----
-
-## ⚡ Tech Stack
-
-| Layer | Technology |
-|---|---|
-| **Frontend** | React 18 + Vite + Tailwind CSS |
-| **Backend / BaaS** | Firebase (Auth + Cloud Firestore) & In-Browser Preview Engine |
-| **Email Relay** | EmailJS (Client → `info@freshleads.llc` + Auto-responders) |
-| **Hosting** | GitHub Pages (`gh-pages` branch) |
-| **Custom Domain** | `crm.freshleads.llc` |
-| **CI/CD** | GitHub Actions Workflow |
+> Client Portal and Dedicated Admin Operations Console for **[FreshLeads.llc](https://freshleads.llc)** — hosted at **crm.freshleads.llc**
 
 ---
 
-## 🎨 FreshLeads Brand Styling
+## ⚡ Architecture Overview
 
-- **Background**: `#07080B` (Fresh Black)
-- **Primary Accent**: `#FF5C00` (Fresh Orange)
-- **Cards & Borders**: `#0F1116` / `#1E2028`
-- **Typography**: Inter & Plus Jakarta Sans
-
----
-
-## 🚀 Key Features
-
-### 1. Client Dashboard (`/dashboard`)
-- **Key Pipeline Metrics**: Total Leads, New, Called, Appointments Set, Closed, Dead.
-- **Conversion Tracking**: Automated Close Rate % calculation.
-- **Interactive Lead Board**:
-  - Filter by status (All, New, Called, Appt. Set, Closed, Dead).
-  - Search by homeowner name, address, or phone number.
-  - Sortable columns.
-  - Quick status dropdown selector.
-  - Direct links to **Audio Call Recordings** verifying the homeowner's inspection appointment & active insurance.
-  - Inline lead notes with instant saving.
-
-### 2. Contact Support & Messaging (`/messages`)
-- Direct composition from client account to `info@freshleads.llc`.
-- Automatically prefills client name and authenticated email.
-- Triggers immediate confirmation auto-reply to client.
-- Outbound & inbound thread message history.
-
-### 3. Account Settings (`/profile`)
-- Update contact name, roofing company name, and direct phone.
-- Secure password change interface.
-
-### 4. Admin Backend (`/admin`)
-- **Client Directory (`/admin/users`)**: Overview of all registered clients, total leads assigned, and direct contact details.
-- **CSV Lead Bulk Uploader (`/admin/upload`)**:
-  - Drag-and-drop CSV upload.
-  - Required headers: `client_email, homeowner_name, address, phone, storm_date, audio_url`.
-  - Client lookup and instant pipeline assignment.
-  - Automatic email notification dispatched: *"You have X new leads in your dashboard!"*
-- **Announcements Broadcast (`/admin/announce`)**: Send instant email announcements to all clients.
+```
+                      crm.freshleads.llc
+                              │
+             ┌────────────────┴────────────────┐
+             ▼                                 ▼
+    [ Client CRM Portal ]             [ Admin Ops Console ]
+      /dashboard                        /admin/dashboard
+      /messages                         /admin/leads/new  (Load Leads & Audio)
+      /profile                          /admin/leads      (Master Inventory)
+                                        /admin/clients    (Contractor Accounts)
+                                        /admin/upload     (Bulk CSV Dispatch)
+                                        /admin/messages   (Support Desk)
+```
 
 ---
 
-## 🛠️ Quick Setup Guide
+## 🛡️ SSL & HTTPS Configuration
 
-### 1. Instant Preview Mode
-The app includes a built-in interactive demo engine with pre-seeded roofing leads and accounts. You can test both **Client** and **Admin** views immediately on the live link.
-
-### 2. Connecting Firebase (Optional / Production)
-1. Go to [Firebase Console](https://console.firebase.google.com/) and create a project.
-2. Enable **Authentication** (Email/Password provider).
-3. Enable **Cloud Firestore** in test mode or paste the rules from `firestore.rules`.
-4. Under Project Settings, copy your Web App config keys into your `.env` or GitHub Secrets:
-   ```env
-   VITE_FIREBASE_API_KEY=AIzaSy...
-   VITE_FIREBASE_AUTH_DOMAIN=freshleads-crm.firebaseapp.com
-   VITE_FIREBASE_PROJECT_ID=freshleads-crm
-   VITE_FIREBASE_STORAGE_BUCKET=freshleads-crm.appspot.com
-   VITE_FIREBASE_MESSAGING_SENDER_ID=...
-   VITE_FIREBASE_APP_ID=1:...
-   ```
-
-### 3. EmailJS Setup (For Messaging `info@freshleads.llc`)
-1. Create a free account at [emailjs.com](https://www.emailjs.com).
-2. Connect your email service (`info@freshleads.llc`).
-3. Add the keys to GitHub Secrets:
-   - `VITE_EMAILJS_SERVICE_ID`
-   - `VITE_EMAILJS_TEMPLATE_CONTACT`
-   - `VITE_EMAILJS_TEMPLATE_WELCOME`
-   - `VITE_EMAILJS_TEMPLATE_NEWLEADS`
-   - `VITE_EMAILJS_TEMPLATE_AUTOREPLY`
-   - `VITE_EMAILJS_PUBLIC_KEY`
+The application includes built-in strict HTTPS enforcement:
+1. **Automated Let's Encrypt SSL via GitHub Pages**:
+   - In GitHub repository **Settings → Pages**:
+     - Custom domain: `crm.freshleads.llc`
+     - Check **"Enforce HTTPS"** (activates automatically once DNS propagates).
+2. **Client-Side HTTPS Redirection**:
+   - `index.html` automatically intercepts any unencrypted `http://` traffic on production domains and upgrades it to `https://`.
+3. **DNS CNAME Setup**:
+   - **Type**: `CNAME`
+   - **Host / Name**: `crm`
+   - **Value / Target**: `farmadvisorar-ux.github.io`
+   - **TTL**: `Auto` / `300`
 
 ---
 
-## 🌐 Custom Subdomain DNS Setup
+## 🎧 Call Audio Recording System
 
-To point `crm.freshleads.llc` to this portal:
+Both the **Client Lead Board** and **Admin Console** include a built-in **Interactive Audio Player**:
+- **One-Click Playback**: Listen to the recorded homeowner inspection confirmation call without leaving the page.
+- **Waveform Visualizer**: Animated soundwave indicator during playback.
+- **Playback Controls**: Play/pause, seek scrub bar, speed adjustment (`1x`, `1.25x`, `1.5x`, `2x`), and volume/mute.
+- **Direct Download**: Save audio file (`.mp3`) with one click.
+- **Inspection Verification**: Displays confirmed insurance carrier (State Farm, Allstate, Travelers, etc.) and pre-set appointment window right in the player.
 
-Add a CNAME record at your DNS provider (e.g. GoDaddy, Namecheap, Cloudflare, Google Domains):
-- **Type**: `CNAME`
-- **Host / Name**: `crm`
-- **Target / Value**: `farmadvisorar-ux.github.io`
-- **TTL**: `Auto` or `300`
+---
+
+## 🛠️ Admin Dashboard (`/admin`)
+
+The Admin Operations Console is completely **separate** from the client view:
+
+### 1. Load Single Lead & Audio (`/admin/leads/new`)
+- Assign lead to any registered contractor.
+- Enter homeowner name, phone, street address, and city/state/zip.
+- Select insurance carrier and storm date.
+- Set pre-set inspection appointment time.
+- **Attach Call Audio**:
+  - **Upload Audio File**: Select an `.mp3`, `.wav`, or `.m4a` file directly from your computer.
+  - **Recording URL**: Paste external links (CallRail, S3, Google Drive, Dropbox).
+  - **In-Form Audio Test Player**: Test and listen to the audio recording before saving.
+- Enter adjuster notes and damage details.
+- Toggle instant email notification to the client.
+
+### 2. Master Leads Inventory (`/admin/leads`)
+- Search, filter by client, and filter by pipeline status across all leads.
+- Play call audio recordings directly from the table.
+- Edit lead details, notes, or pre-set inspection times.
+- Reassign leads between clients (for replacement guarantees).
+- Delete leads.
+
+### 3. Client Contractor Accounts (`/admin/clients`)
+- Manage contractor accounts and see their assigned lead counts.
+- **"View Client CRM"**: One-click button to jump directly into any client's CRM portal in read/manage mode to see exactly what they see.
+- Register new client accounts directly.
+
+### 4. Bulk CSV Lead Uploader (`/admin/upload`)
+- Drag-and-drop CSV files with headers: `client_email`, `homeowner_name`, `address`, `phone`, `insurance_carrier`, `audio_url`, `storm_date`, `appointment_date`.
+- Auto-maps leads to contractor accounts and sends email alerts.
+
+### 5. Support Message Desk (`/admin/messages`)
+- View inquiries sent by clients to `info@freshleads.llc`.
+- Dispatch direct replies back into the client's CRM portal.
+
+---
+
+## 📱 Client CRM Features (`/dashboard`)
+
+- **KPI Cards**: Total Leads, New, Called, Appointments Set, Closed, and Close Rate %.
+- **Lead Board**: Search, status filters, sorting, status dropdown, inline adjuster notes, and **Play Audio** modal.
+- **Contact Support (`/messages`)**: Send inquiries to `info@freshleads.llc` with auto-responder confirmations.
+- **Profile (`/profile`)**: Manage company info, phone, and password.
+
+---
+
+## 🚀 Quick Access URLs
+
+| Section | URL | Demo Login |
+|---|---|---|
+| **Client Portal** | `https://crm.freshleads.llc/login` | Click *"1-Click Contractor Demo Access"* |
+| **Admin Console** | `https://crm.freshleads.llc/admin/login` | Click *"1-Click Team Access"* |
+| **Direct Admin Overview** | `https://crm.freshleads.llc/admin/dashboard` | Requires Admin role |

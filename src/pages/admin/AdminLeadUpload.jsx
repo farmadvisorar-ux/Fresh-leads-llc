@@ -3,7 +3,8 @@ import { api } from '../../firebase'
 import { sendNewLeadsNotification } from '../../emailService'
 import CsvUploader from '../../components/CsvUploader'
 import { ToastContainer, useToast } from '../../components/Toast'
-import { Upload, CheckCircle } from 'lucide-react'
+import { Upload, CheckCircle, ArrowLeft } from 'lucide-react'
+import { Link } from 'react-router-dom'
 
 export default function AdminLeadUpload() {
   const { toasts, addToast, removeToast } = useToast()
@@ -29,11 +30,16 @@ export default function AdminLeadUpload() {
 
       for (const [email, clientRows] of Object.entries(byClient)) {
         // Look up client profile by email
-        const profile = await api.findProfileByEmail(email)
+        let profile = await api.findProfileByEmail(email)
 
         if (!profile) {
-          addToast(`Client not found: ${email}. Please ensure client has an account.`, 'warning')
-          continue
+          // Auto-create client profile if not existing
+          profile = await api.createClientAccount({
+            email,
+            fullName: email.split('@')[0],
+            company: 'Roofing Contractor',
+            phone: '',
+          })
         }
 
         const leadsToInsert = clientRows.map(row => ({
@@ -41,8 +47,12 @@ export default function AdminLeadUpload() {
           homeowner_name: row.homeowner_name?.trim() || '',
           address: row.address?.trim() || '',
           phone: row.phone?.trim() || '',
+          insurance_carrier: row.insurance_carrier || row.insurance || 'State Farm',
           storm_date: row.storm_date || null,
-          audio_url: row.audio_url?.trim() || null,
+          appointment_date: row.appointment_date || row.appointment || 'Pre-Set Inspection',
+          audio_url: row.audio_url?.trim() || row.audio?.trim() || null,
+          audio_filename: `${(row.homeowner_name || 'lead').replace(/\s+/g, '_')}_call.mp3`,
+          notes: row.notes?.trim() || 'Homeowner confirmed inspection appointment and active homeowner policy.',
           status: 'new',
         }))
 
@@ -75,48 +85,96 @@ export default function AdminLeadUpload() {
   }
 
   return (
-    <div className="max-w-3xl">
-      <div className="mb-8">
-        <div className="flex items-center gap-2 mb-1">
-          <Upload className="w-5 h-5 text-fresh-orange" />
-          <span className="text-fresh-orange text-sm font-semibold">Admin</span>
+    <div className="max-w-3xl space-y-6 animate-fade-in pb-12">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Link
+            to="/admin/dashboard"
+            className="w-9 h-9 rounded-lg bg-fresh-card hover:bg-fresh-border border border-fresh-border flex items-center justify-center text-fresh-muted hover:text-white transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </Link>
+          <div>
+            <div className="flex items-center gap-2">
+              <Upload className="w-4 h-4 text-fresh-orange" />
+              <span className="text-xs font-bold uppercase tracking-wider text-fresh-orange">
+                Bulk Dispatch
+              </span>
+            </div>
+            <h1 className="text-2xl font-display font-bold text-white">
+              Bulk CSV Lead Uploader
+            </h1>
+          </div>
         </div>
-        <h1 className="text-3xl font-display font-bold text-white">Upload Leads</h1>
-        <p className="text-fresh-muted mt-1">
-          Upload a CSV to assign leads to clients. Notification emails are sent automatically.
-        </p>
+
+        <Link
+          to="/admin/leads/new"
+          className="btn-secondary text-xs py-2 px-3"
+        >
+          Single Lead Form
+        </Link>
       </div>
 
       {lastResult && (
-        <div className="flex items-start gap-3 bg-green-900/20 border border-green-800/40 rounded-xl p-4 mb-6">
+        <div className="flex items-start gap-3 bg-green-900/20 border border-green-800/40 rounded-xl p-4">
           <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
           <div>
-            <p className="text-green-300 font-medium">Upload Successful</p>
-            <p className="text-green-400/80 text-sm">
-              {lastResult.inserted} leads inserted · {lastResult.clients} clients notified via email
+            <p className="text-green-300 font-medium">Batch Upload Successful</p>
+            <p className="text-green-400/80 text-xs mt-0.5">
+              {lastResult.inserted} leads inserted & assigned · {lastResult.clients} clients notified via email
             </p>
           </div>
         </div>
       )}
 
       {uploading && (
-        <div className="flex items-center gap-3 bg-fresh-border/40 rounded-xl p-4 mb-6">
+        <div className="flex items-center gap-3 bg-fresh-border/40 rounded-xl p-4">
           <div className="w-5 h-5 border-2 border-fresh-border border-t-fresh-orange rounded-full animate-spin flex-shrink-0" />
-          <p className="text-fresh-muted text-sm">Processing and uploading leads…</p>
+          <p className="text-fresh-muted text-xs">Parsing file, matching clients, and dispatching leads…</p>
         </div>
       )}
 
       <CsvUploader onUpload={handleUpload} />
 
-      <div className="mt-8 card">
-        <h3 className="font-display font-bold text-white mb-3">How it works</h3>
-        <ol className="space-y-2 text-fresh-muted text-sm list-decimal list-inside">
-          <li>Prepare your CSV with the required columns listed above</li>
-          <li>Each <code className="text-slate-300 bg-fresh-border px-1 rounded">client_email</code> must match a registered CRM account (e.g. <code className="text-slate-300 bg-fresh-border px-1 rounded">client@freshleads.llc</code>)</li>
-          <li>Upload the file and preview the parsed rows</li>
-          <li>Click "Upload Leads" to insert into their pipeline</li>
-          <li>Clients receive an automatic notification email: "You have X new leads in your dashboard!"</li>
-        </ol>
+      <div className="card space-y-3">
+        <h3 className="font-display font-bold text-white text-sm">Supported CSV Header Names</h3>
+        <p className="text-fresh-muted text-xs leading-relaxed">
+          Your CSV file can include the following columns:
+        </p>
+        <div className="grid grid-cols-2 gap-2 text-xs">
+          <div className="bg-fresh-border/30 p-2 rounded">
+            <code className="text-fresh-orange font-bold">client_email</code>
+            <p className="text-fresh-muted text-[11px] mt-0.5">Contractor's account email</p>
+          </div>
+          <div className="bg-fresh-border/30 p-2 rounded">
+            <code className="text-fresh-orange font-bold">homeowner_name</code>
+            <p className="text-fresh-muted text-[11px] mt-0.5">Homeowner contact name</p>
+          </div>
+          <div className="bg-fresh-border/30 p-2 rounded">
+            <code className="text-fresh-orange font-bold">address</code>
+            <p className="text-fresh-muted text-[11px] mt-0.5">Property address & city</p>
+          </div>
+          <div className="bg-fresh-border/30 p-2 rounded">
+            <code className="text-fresh-orange font-bold">phone</code>
+            <p className="text-fresh-muted text-[11px] mt-0.5">Homeowner phone number</p>
+          </div>
+          <div className="bg-fresh-border/30 p-2 rounded">
+            <code className="text-slate-300 font-bold">insurance_carrier</code>
+            <p className="text-fresh-muted text-[11px] mt-0.5">e.g. State Farm, Allstate</p>
+          </div>
+          <div className="bg-fresh-border/30 p-2 rounded">
+            <code className="text-slate-300 font-bold">audio_url</code>
+            <p className="text-fresh-muted text-[11px] mt-0.5">Call recording URL (.mp3 / link)</p>
+          </div>
+          <div className="bg-fresh-border/30 p-2 rounded">
+            <code className="text-slate-300 font-bold">storm_date</code>
+            <p className="text-fresh-muted text-[11px] mt-0.5">YYYY-MM-DD format</p>
+          </div>
+          <div className="bg-fresh-border/30 p-2 rounded">
+            <code className="text-slate-300 font-bold">appointment_date</code>
+            <p className="text-fresh-muted text-[11px] mt-0.5">e.g. "Tuesday 2:00 PM"</p>
+          </div>
+        </div>
       </div>
 
       <ToastContainer toasts={toasts} removeToast={removeToast} />

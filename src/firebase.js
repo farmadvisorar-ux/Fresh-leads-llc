@@ -21,7 +21,7 @@ import {
   orderBy,
   addDoc,
   updateDoc,
-  serverTimestamp
+  deleteDoc
 } from 'firebase/firestore'
 
 // Firebase configuration from environment
@@ -60,8 +60,8 @@ if (isFirebaseConfigured) {
 const STORAGE_KEYS = {
   CURRENT_USER: 'freshleads_current_user',
   PROFILES: 'freshleads_profiles',
-  LEADS: 'freshleads_leads',
-  MESSAGES: 'freshleads_messages',
+  LEADS: 'freshleads_leads_v2',
+  MESSAGES: 'freshleads_messages_v2',
 }
 
 const DEFAULT_PROFILES = [
@@ -75,15 +75,27 @@ const DEFAULT_PROFILES = [
     created_at: new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString(),
   },
   {
+    id: 'client-user-2',
+    email: 'apex@roofingpros.com',
+    full_name: 'Marcus Vance',
+    company: 'Apex Storm Restoration',
+    phone: '(817) 555-8821',
+    role: 'client',
+    created_at: new Date(Date.now() - 14 * 24 * 3600 * 1000).toISOString(),
+  },
+  {
     id: 'admin-user-1',
     email: 'admin@freshleads.llc',
-    full_name: 'FreshLeads Admin',
-    company: 'FreshLeads HQ',
+    full_name: 'FreshLeads Ops Team',
+    company: 'FreshLeads LLC HQ',
     phone: '(800) 555-0100',
     role: 'admin',
     created_at: new Date(Date.now() - 60 * 24 * 3600 * 1000).toISOString(),
   }
 ]
+
+// Sample hosted audio recordings with real sound or demonstration audio
+const SAMPLE_AUDIO = 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3'
 
 const DEFAULT_LEADS = [
   {
@@ -92,10 +104,13 @@ const DEFAULT_LEADS = [
     homeowner_name: 'Robert Henderson',
     address: '4821 Meadowview Ln, Plano, TX 75024',
     phone: '(469) 555-2981',
+    insurance_carrier: 'State Farm',
     storm_date: '2026-05-18',
+    appointment_date: 'Tomorrow, 2:00 PM',
     status: 'new',
-    audio_url: 'https://freshleads.llc/sample-audio-1.mp3',
-    notes: 'Homeowner observed hail impact on east-facing slope. Insurance is State Farm.',
+    audio_url: SAMPLE_AUDIO,
+    audio_filename: 'call_rec_henderson_robert.mp3',
+    notes: 'Homeowner observed ping-pong ball size hail on east-facing slope. Confirmed active State Farm homeowner policy ($1,000 deductible). Both homeowners will be present for inspection.',
     created_at: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
   },
   {
@@ -104,10 +119,13 @@ const DEFAULT_LEADS = [
     homeowner_name: 'Sarah Jenkins',
     address: '1209 Oak Ridge Dr, Frisco, TX 75034',
     phone: '(972) 555-4819',
+    insurance_carrier: 'Allstate',
     storm_date: '2026-05-18',
+    appointment_date: 'Thursday, 10:30 AM',
     status: 'called',
-    audio_url: 'https://freshleads.llc/sample-audio-2.mp3',
-    notes: 'Called left voicemail. Spouse answered second call and agreed to schedule.',
+    audio_url: SAMPLE_AUDIO,
+    audio_filename: 'call_rec_jenkins_sarah.mp3',
+    notes: 'Called left voicemail. Spouse answered second call and agreed to pre-set inspection time. Noted minor leak in master bedroom ceiling.',
     created_at: new Date(Date.now() - 14 * 3600 * 1000).toISOString(),
   },
   {
@@ -116,10 +134,13 @@ const DEFAULT_LEADS = [
     homeowner_name: 'Michael & Claire Zhang',
     address: '8910 Whispering Pines, McKinney, TX 75071',
     phone: '(214) 555-7734',
+    insurance_carrier: 'Travelers',
     storm_date: '2026-04-22',
+    appointment_date: 'Friday, 1:00 PM',
     status: 'appointment_set',
-    audio_url: 'https://freshleads.llc/sample-audio-3.mp3',
-    notes: 'Inspection confirmed for Tuesday at 10:00 AM with Claire.',
+    audio_url: SAMPLE_AUDIO,
+    audio_filename: 'call_rec_zhang_inspection.mp3',
+    notes: 'Inspection confirmed for Friday at 1:00 PM with Claire. Roof is 14 years old Architectural shingle. Several missing ridge caps from high winds.',
     created_at: new Date(Date.now() - 28 * 3600 * 1000).toISOString(),
   },
   {
@@ -128,11 +149,29 @@ const DEFAULT_LEADS = [
     homeowner_name: 'David Alvarez',
     address: '3340 Timberline Trail, Allen, TX 75013',
     phone: '(972) 555-3120',
+    insurance_carrier: 'Liberty Mutual',
     storm_date: '2026-04-22',
+    appointment_date: 'Completed',
     status: 'closed',
-    audio_url: 'https://freshleads.llc/sample-audio-4.mp3',
-    notes: 'Claim approved! Replacement contract signed. Total $18,400.',
+    audio_url: SAMPLE_AUDIO,
+    audio_filename: 'call_rec_alvarez_preset.mp3',
+    notes: 'Claim approved! Full roof replacement authorized by adjuster. Contract signed. Total claim value: $19,850.',
     created_at: new Date(Date.now() - 4 * 24 * 3600 * 1000).toISOString(),
+  },
+  {
+    id: 'lead-5',
+    client_id: 'client-user-2',
+    homeowner_name: 'Gregory & Brenda Holt',
+    address: '502 Highland Park Cir, Fort Worth, TX 76107',
+    phone: '(817) 555-9012',
+    insurance_carrier: 'Farmers',
+    storm_date: '2026-06-02',
+    appointment_date: 'Wednesday, 4:00 PM',
+    status: 'new',
+    audio_url: SAMPLE_AUDIO,
+    audio_filename: 'call_rec_holt_ftworth.mp3',
+    notes: 'Gutters dented and window screens torn from 2-inch hail. Homeowner wants roofer to meet insurance adjuster on-site.',
+    created_at: new Date(Date.now() - 1 * 3600 * 1000).toISOString(),
   }
 ]
 
@@ -141,9 +180,25 @@ const DEFAULT_MESSAGES = [
     id: 'msg-1',
     client_id: 'client-user-1',
     subject: 'Welcome to FreshLeads CRM',
-    body: 'Welcome to your client portal! Your pre-set roofing leads with audio recordings are loaded into your dashboard.',
+    body: 'Welcome to your client portal! Your pre-set roofing leads with audio recordings are loaded into your dashboard. If you need any adjustments to your lead delivery cadence or zip codes, reply directly here or email info@freshleads.llc.',
     direction: 'inbound',
     sent_at: new Date(Date.now() - 5 * 24 * 3600 * 1000).toISOString(),
+  },
+  {
+    id: 'msg-2',
+    client_id: 'client-user-1',
+    subject: 'Question on Colin County leads schedule',
+    body: 'Hey FreshLeads team, can we increase our delivery to 5 pre-set inspections per week starting next Monday?',
+    direction: 'outbound',
+    sent_at: new Date(Date.now() - 2 * 24 * 3600 * 1000).toISOString(),
+  },
+  {
+    id: 'msg-3',
+    client_id: 'client-user-1',
+    subject: 'Re: Question on Colin County leads schedule',
+    body: 'Absolutely John! We have calibrated your dispatch schedule for 5 verified inspections per week starting Monday. You will receive real-time audio and details as appointments are booked.',
+    direction: 'inbound',
+    sent_at: new Date(Date.now() - 1 * 24 * 3600 * 1000).toISOString(),
   }
 ]
 
@@ -234,7 +289,7 @@ export const api = {
         id: cred.user.uid,
         email: cred.user.email,
         full_name: cred.user.displayName || email.split('@')[0],
-        role: 'client'
+        role: email.toLowerCase().includes('admin') ? 'admin' : 'client'
       }
       return { user: cred.user, profile }
     } else {
@@ -243,13 +298,12 @@ export const api = {
       let found = profiles.find(p => p.email.toLowerCase() === email.toLowerCase())
       
       if (!found) {
-        // If testing with a new email in local mode, auto-register as client
         const newId = 'user-' + Date.now()
         found = {
           id: newId,
           email,
           full_name: email.split('@')[0],
-          company: 'Roofing Pro LLC',
+          company: 'Roofing Contractor LLC',
           phone: '(555) 000-0000',
           role: email.toLowerCase().includes('admin') ? 'admin' : 'client',
           created_at: new Date().toISOString(),
@@ -277,7 +331,6 @@ export const api = {
     if (isFirebaseConfigured && auth) {
       return sendPasswordResetEmail(auth, email)
     }
-    // Local mode simulates success
     return true
   },
 
@@ -338,36 +391,67 @@ export const api = {
     }
   },
 
-  // Leads: Update Status
-  async updateLeadStatus(leadId, status) {
+  // Leads: Create Single Lead (Admin)
+  async createSingleLead(leadData) {
+    const newLead = {
+      ...leadData,
+      status: leadData.status || 'new',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }
+    if (isFirebaseConfigured && db) {
+      const docRef = await addDoc(collection(db, 'leads'), newLead)
+      return { id: docRef.id, ...newLead }
+    } else {
+      const leads = getLocal(STORAGE_KEYS.LEADS, DEFAULT_LEADS)
+      const created = { id: 'lead-' + Date.now(), ...newLead }
+      leads.unshift(created)
+      setLocal(STORAGE_KEYS.LEADS, leads)
+      return created
+    }
+  },
+
+  // Leads: Update (Full or partial)
+  async updateLead(leadId, updates) {
     if (isFirebaseConfigured && db) {
       const ref = doc(db, 'leads', leadId)
-      await updateDoc(ref, { status, updated_at: new Date().toISOString() })
+      await updateDoc(ref, { ...updates, updated_at: new Date().toISOString() })
     } else {
       const leads = getLocal(STORAGE_KEYS.LEADS, DEFAULT_LEADS)
       const idx = leads.findIndex(l => l.id === leadId)
       if (idx !== -1) {
-        leads[idx].status = status
-        leads[idx].updated_at = new Date().toISOString()
+        leads[idx] = { ...leads[idx], ...updates, updated_at: new Date().toISOString() }
         setLocal(STORAGE_KEYS.LEADS, leads)
+        return leads[idx]
       }
     }
   },
 
-  // Leads: Update Notes
-  async updateLeadNotes(leadId, notes) {
+  // Leads: Delete Lead (Admin)
+  async deleteLead(leadId) {
     if (isFirebaseConfigured && db) {
-      const ref = doc(db, 'leads', leadId)
-      await updateDoc(ref, { notes, updated_at: new Date().toISOString() })
+      await deleteDoc(doc(db, 'leads', leadId))
     } else {
       const leads = getLocal(STORAGE_KEYS.LEADS, DEFAULT_LEADS)
-      const idx = leads.findIndex(l => l.id === leadId)
-      if (idx !== -1) {
-        leads[idx].notes = notes
-        leads[idx].updated_at = new Date().toISOString()
-        setLocal(STORAGE_KEYS.LEADS, leads)
-      }
+      const filtered = leads.filter(l => l.id !== leadId)
+      setLocal(STORAGE_KEYS.LEADS, filtered)
     }
+    return true
+  },
+
+  // Leads: Update Status
+  async updateLeadStatus(leadId, status) {
+    return this.updateLead(leadId, { status })
+  },
+
+  // Leads: Update Notes
+  async updateLeadNotes(leadId, notes) {
+    return this.updateLead(leadId, { notes })
+  },
+
+  // Leads: Reassign Lead to another Client
+  async reassignLead(leadId, newClientId) {
+    return this.updateLead(leadId, { client_id: newClientId })
   },
 
   // Leads: Bulk Insert (Admin)
@@ -401,6 +485,27 @@ export const api = {
     }
   },
 
+  // Profiles: Create Client Account (Admin)
+  async createClientAccount({ email, fullName, company, phone }) {
+    const newProfile = {
+      id: 'client-' + Date.now(),
+      email,
+      full_name: fullName,
+      company,
+      phone,
+      role: 'client',
+      created_at: new Date().toISOString(),
+    }
+    if (isFirebaseConfigured && db) {
+      await setDoc(doc(db, 'profiles', newProfile.id), newProfile)
+    } else {
+      const profiles = getLocal(STORAGE_KEYS.PROFILES, DEFAULT_PROFILES)
+      profiles.unshift(newProfile)
+      setLocal(STORAGE_KEYS.PROFILES, profiles)
+    }
+    return newProfile
+  },
+
   // Profiles: Find by Email (Admin)
   async findProfileByEmail(email) {
     if (isFirebaseConfigured && db) {
@@ -414,7 +519,7 @@ export const api = {
     }
   },
 
-  // Messages: Get
+  // Messages: Get for Client
   async getMessages(userId) {
     if (isFirebaseConfigured && db) {
       const q = query(collection(db, 'messages'), where('client_id', '==', userId), orderBy('sent_at', 'desc'))
@@ -423,6 +528,16 @@ export const api = {
     } else {
       const messages = getLocal(STORAGE_KEYS.MESSAGES, DEFAULT_MESSAGES)
       return messages.filter(m => m.client_id === userId || m.client_id === 'client-user-1')
+    }
+  },
+
+  // Messages: Get ALL Messages for Admin Inbox
+  async getAllMessages() {
+    if (isFirebaseConfigured && db) {
+      const snap = await getDocs(query(collection(db, 'messages'), orderBy('sent_at', 'desc')))
+      return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+    } else {
+      return getLocal(STORAGE_KEYS.MESSAGES, DEFAULT_MESSAGES)
     }
   },
 
@@ -457,7 +572,7 @@ export const api = {
             id: user.uid,
             email: user.email,
             full_name: user.displayName || user.email.split('@')[0],
-            role: 'client'
+            role: user.email.toLowerCase().includes('admin') ? 'admin' : 'client'
           }
           callback({ user, profile })
         } else {
@@ -465,7 +580,6 @@ export const api = {
         }
       })
     } else {
-      // Local check
       const current = getLocal(STORAGE_KEYS.CURRENT_USER, null)
       if (current) {
         callback(current)

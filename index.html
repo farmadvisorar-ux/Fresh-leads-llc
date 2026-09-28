@@ -3,7 +3,18 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>FreshLeads CRM | Client Portal</title>
+    <title>FreshLeads CRM | Client & Admin Portal</title>
+
+    <!-- Strict HTTPS Enforcer for custom domain SSL -->
+    <script>
+      if (location.protocol === 'http:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+        location.replace('https://' + location.host + location.pathname + location.search + location.hash);
+      }
+    </script>
+
+    <!-- Primary SEO & Brand Metadata -->
+    <meta name="description" content="FreshLeads.llc Client CRM - Pre-set roofing inspection appointments backed by call audio recordings and verified homeowner insurance." />
+    <meta name="theme-color" content="#07080B" />
 
     <!-- Favicon matching freshleads.llc -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2307080B'/%3E%3Cpath d='M17 3L7 17h8l-2 12 12-16h-9l3-10z' fill='%23FF5C00'/%3E%3C/svg%3E" />
@@ -13,7 +24,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@700;800;900&display=swap" rel="stylesheet" />
   </head>
-  <body class="bg-fresh-black text-slate-100 antialiased">
+  <body class="bg-fresh-black text-slate-100 antialiased selection:bg-fresh-orange selection:text-white">
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

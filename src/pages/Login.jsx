@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { Zap, Eye, EyeOff, AlertCircle } from 'lucide-react'
+import { Zap, Eye, EyeOff, AlertCircle, ShieldCheck } from 'lucide-react'
 
 export default function Login() {
-  const { signIn } = useAuth()
+  const { signIn, switchAccount } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const from = location.state?.from?.pathname || '/dashboard'
@@ -23,8 +23,18 @@ export default function Login() {
     if (err) {
       setError(err.message)
     } else {
-      navigate(from, { replace: true })
+      // If logging in with admin email, route directly to admin dashboard
+      if (form.email.toLowerCase().includes('admin')) {
+        navigate('/admin/dashboard', { replace: true })
+      } else {
+        navigate(from, { replace: true })
+      }
     }
+  }
+
+  function handleDemoClientLogin() {
+    switchAccount('client')
+    navigate('/dashboard', { replace: true })
   }
 
   return (
@@ -32,18 +42,18 @@ export default function Login() {
       <div className="w-full max-w-md animate-fade-in">
         {/* Logo */}
         <div className="flex items-center gap-3 mb-8 justify-center">
-          <div className="w-10 h-10 bg-fresh-orange rounded-xl flex items-center justify-center">
+          <div className="w-10 h-10 bg-fresh-orange rounded-xl flex items-center justify-center shadow-lg shadow-fresh-orange/20">
             <Zap className="w-6 h-6 text-white fill-white" />
           </div>
           <div>
             <p className="font-display font-bold text-white text-lg leading-tight">FreshLeads</p>
-            <p className="text-fresh-muted text-xs">CRM Portal</p>
+            <p className="text-fresh-muted text-xs">Client CRM Portal</p>
           </div>
         </div>
 
         <div className="card">
-          <h1 className="text-2xl font-display font-bold text-white mb-1">Welcome back</h1>
-          <p className="text-fresh-muted text-sm mb-6">Sign in to your account</p>
+          <h1 className="text-2xl font-display font-bold text-white mb-1">Contractor Sign In</h1>
+          <p className="text-fresh-muted text-sm mb-6">Access your verified roofing leads and call recordings</p>
 
           {error && (
             <div className="flex items-center gap-2 bg-red-900/20 border border-red-800/40 rounded-lg p-3 mb-5">
@@ -54,14 +64,14 @@ export default function Login() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5">Email</label>
+              <label className="block text-sm font-medium text-slate-300 mb-1.5">Work Email</label>
               <input
                 type="email"
                 required
                 value={form.email}
                 onChange={e => setForm({ ...form, email: e.target.value })}
                 className="input-field"
-                placeholder="you@company.com"
+                placeholder="contractor@roofingcompany.com"
               />
             </div>
 
@@ -92,17 +102,40 @@ export default function Login() {
             </div>
 
             <button type="submit" disabled={loading} className="btn-primary w-full justify-center py-3">
-              {loading ? 'Signing in…' : 'Sign In'}
+              {loading ? 'Signing in…' : 'Sign In to CRM'}
             </button>
           </form>
+
+          {/* 1-Click Client Demo */}
+          <div className="mt-5 pt-4 border-t border-fresh-border">
+            <button
+              type="button"
+              onClick={handleDemoClientLogin}
+              className="w-full btn-secondary text-xs py-2 justify-center text-slate-300 hover:text-white"
+            >
+              <span>1-Click Contractor Demo Access</span>
+            </button>
+          </div>
         </div>
 
+        {/* Client signup */}
         <p className="text-center text-fresh-muted text-sm mt-6">
           Don't have an account?{' '}
           <Link to="/signup" className="text-fresh-orange hover:text-fresh-orange-light font-medium transition-colors">
-            Sign up
+            Sign up for FreshLeads CRM
           </Link>
         </p>
+
+        {/* Separate Admin Portal Link */}
+        <div className="text-center mt-6 pt-4 border-t border-fresh-border/40">
+          <Link
+            to="/admin/login"
+            className="text-xs text-fresh-muted hover:text-fresh-orange inline-flex items-center gap-1.5 transition-colors"
+          >
+            <ShieldCheck className="w-3.5 h-3.5" />
+            <span>FreshLeads Staff & Operations? Access Admin Portal →</span>
+          </Link>
+        </div>
       </div>
     </div>
   )
